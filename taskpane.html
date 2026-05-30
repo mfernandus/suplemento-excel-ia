@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Assistente IA — Excel</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Newsreader:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #1c1a17;
+      --paper: #f7f4ee;
+      --paper-2: #efeae0;
+      --line: #d9d1c2;
+      --accent: #7a2e1d;       /* terracota editorial */
+      --accent-soft: #b14a32;
+      --ok: #2f6b3c;
+      --warn: #9a6b12;
+      --muted: #756d60;
+      --field: #fffdf8;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "Newsreader", Georgia, serif;
+      font-size: 14px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { padding: 16px 16px 28px; }
+
+    header.brand {
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+    }
+    .brand .kicker {
+      font-family: "Newsreader", serif;
+      font-size: 10.5px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 500;
+    }
+    .brand h1 {
+      font-family: "Fraunces", serif;
+      font-weight: 600;
+      font-size: 22px;
+      line-height: 1.1;
+      margin: 4px 0 0;
+      letter-spacing: -.01em;
+    }
+    .brand p { margin: 6px 0 0; color: var(--muted); font-size: 12.5px; font-style: italic; }
+
+    label.lbl {
+      display: block;
+      font-family: "Newsreader", serif;
+      font-size: 11px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 0 0 5px;
+      font-weight: 500;
+    }
+    .field {
+      width: 100%;
+      background: var(--field);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 9px 10px;
+      font-family: "Newsreader", serif;
+      font-size: 14px;
+      color: var(--ink);
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .field:focus {
+      outline: none;
+      border-color: var(--accent-soft);
+      box-shadow: 0 0 0 3px rgba(177,74,50,.12);
+    }
+    textarea.field { resize: vertical; min-height: 76px; line-height: 1.45; }
+    select.field { appearance: none; cursor: pointer; }
+
+    .block { margin-bottom: 16px; }
+    .row { display: flex; gap: 8px; }
+    .row > * { flex: 1; }
+
+    /* settings (chave) — recolhível */
+    details.settings {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--paper-2);
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    details.settings summary {
+      cursor: pointer;
+      list-style: none;
+      padding: 10px 12px;
+      font-size: 12px;
+      letter-spacing: .04em;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+    }
+    details.settings summary::-webkit-details-marker { display: none; }
+    details.settings summary .chev { transition: transform .2s; color: var(--muted); }
+    details.settings[open] summary .chev { transform: rotate(180deg); }
+    .settings-body { padding: 0 12px 12px; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 7px; background: var(--warn); vertical-align: middle; }
+    .dot.on { background: var(--ok); }
+
+    /* segmented control de modo */
+    .seg {
+      display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--field);
+    }
+    .seg button {
+      flex: 1; border: 0; background: transparent; padding: 9px 6px;
+      font-family: "Newsreader", serif; font-size: 13px; cursor: pointer; color: var(--muted);
+      transition: background .15s, color .15s;
+    }
+    .seg button.active { background: var(--accent); color: #fff; }
+    .hint { font-size: 11.5px; color: var(--muted); font-style: italic; margin: 6px 2px 0; line-height: 1.4; }
+
+    button.run {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      border: 0;
+      border-radius: 6px;
+      padding: 12px;
+      font-family: "Fraunces", serif;
+      font-weight: 600;
+      font-size: 15px;
+      letter-spacing: .01em;
+      cursor: pointer;
+      transition: background .15s, transform .05s;
+    }
+    button.run:hover { background: #5f2417; }
+    button.run:active { transform: translateY(1px); }
+    button.run:disabled { background: #b9b0a1; cursor: not-allowed; }
+
+    .status {
+      margin-top: 14px; font-size: 12.5px; line-height: 1.5;
+      padding: 10px 12px; border-radius: 6px; border: 1px solid var(--line);
+      background: var(--paper-2); color: var(--muted); display: none;
+    }
+    .status.show { display: block; }
+    .status.err { border-color: #d8b0a6; background: #f8eae5; color: var(--accent); }
+    .status.ok { border-color: #b9d2bd; background: #eaf3ea; color: var(--ok); }
+
+    .answer {
+      margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 6px;
+      background: var(--field); font-size: 13.5px; line-height: 1.55; white-space: pre-wrap;
+      display: none; max-height: 280px; overflow-y: auto;
+    }
+    .answer.show { display: block; }
+    .answer .ans-head {
+      font-family: "Newsreader"; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--accent); margin-bottom: 8px; font-weight: 500;
+    }
+
+    .footnote { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 10.5px; color: var(--muted); line-height: 1.5; font-style: italic; }
+
+    .spinner {
+      display: inline-block; width: 12px; height: 12px; border: 2px solid var(--line);
+      border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: -2px; margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="brand">
+      <div class="kicker">Next Editorial</div>
+      <h1>Assistente IA</h1>
+      <p>Edição assistida de planilhas</p>
+    </header>
+
+    <details class="settings" id="settings">
+      <summary>
+        <span><span class="dot" id="keyDot"></span>Chave da API</span>
+        <span class="chev">▾</span>
+      </summary>
+      <div class="settings-body">
+        <label class="lbl" for="apiKey">OpenAI API key</label>
+        <input class="field" id="apiKey" type="password" placeholder="sk-..." autocomplete="off" />
+        <div class="hint">Salva apenas neste navegador (localStorage). Não é enviada a nenhum servidor além da OpenAI.</div>
+        <div style="height:10px"></div>
+        <label class="lbl" for="model">Modelo</label>
+        <select class="field" id="model">
+          <option value="gpt-4o-mini">gpt-4o-mini — rápido e barato</option>
+          <option value="gpt-4o">gpt-4o — mais capaz</option>
+          <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+          <option value="gpt-4.1">gpt-4.1</option>
+        </select>
+        <div style="height:12px"></div>
+        <button class="run" id="saveKey" style="padding:9px;font-size:13px;">Salvar configurações</button>
+      </div>
+    </details>
+
+    <div class="block">
+      <label class="lbl">Modo</label>
+      <div class="seg" id="seg">
+        <button data-mode="cell" class="active">Por célula</button>
+        <button data-mode="summary">Resumo</button>
+      </div>
+      <div class="hint" id="modeHint">Aplica a instrução a cada célula selecionada e escreve o resultado na coluna ao lado.</div>
+    </div>
+
+    <div class="block">
+      <label class="lbl" for="prompt">Instrução</label>
+      <textarea class="field" id="prompt" placeholder="Ex.: Normalize este nome para Título (Primeira Letra Maiúscula) e remova abreviações."></textarea>
+    </div>
+
+    <button class="run" id="run">Executar na seleção</button>
+
+    <div class="status" id="status"></div>
+    <div class="answer" id="answer"><div class="ans-head">Resposta</div><div id="answerBody"></div></div>
+
+    <div class="footnote">
+      A chave fica visível no navegador do Office. Para uso pessoal, tudo bem; para distribuir à equipe, use um proxy que guarde a chave no servidor.
+    </div>
+  </div>
+
+  <script>
+    let MODE = "cell";
+    const $ = (id) => document.getElementById(id);
+
+    Office.onReady((info) => {
+      if (info.host !== Office.HostType.Excel) {
+        setStatus("Este suplemento foi feito para o Excel.", "err");
+      }
+      // carregar config salva
+      const k = localStorage.getItem("nxt_openai_key");
+      const m = localStorage.getItem("nxt_openai_model");
+      if (k) { $("apiKey").value = k; markKey(true); } else { $("settings").open = true; }
+      if (m) { $("model").value = m; }
+    });
+
+    function markKey(on) {
+      $("keyDot").classList.toggle("on", !!on);
+    }
+
+    $("saveKey").addEventListener("click", () => {
+      const k = $("apiKey").value.trim();
+      const m = $("model").value;
+      if (!k) { setStatus("Informe a chave da API.", "err"); return; }
+      localStorage.setItem("nxt_openai_key", k);
+      localStorage.setItem("nxt_openai_model", m);
+      markKey(true);
+      setStatus("Configurações salvas.", "ok");
+      $("settings").open = false;
+    });
+
+    // segmented control
+    $("seg").addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-mode]");
+      if (!b) return;
+      MODE = b.dataset.mode;
+      [...$("seg").children].forEach(c => c.classList.toggle("active", c === b));
+      $("modeHint").textContent = MODE === "cell"
+        ? "Aplica a instrução a cada célula selecionada e escreve o resultado na coluna ao lado."
+        : "Envia a seleção inteira como contexto e devolve uma única resposta no painel (não altera a planilha).";
+    });
+
+    function setStatus(msg, type) {
+      const el = $("status");
+      el.className = "status show" + (type ? " " + type : "");
+      el.innerHTML = msg;
+    }
+    function hideAnswer() { $("answer").classList.remove("show"); }
+    function showAnswer(text) {
+      $("answerBody").textContent = text;
+      $("answer").classList.add("show");
+    }
+
+    async function callOpenAI(system, user) {
+      const key = localStorage.getItem("nxt_openai_key");
+      const model = localStorage.getItem("nxt_openai_model") || "gpt-4o-mini";
+      if (!key) throw new Error("Chave da API não configurada.");
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + key
+        },
+        body: JSON.stringify({
+          model,
+          temperature: 0.2,
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: user }
+          ]
+        })
+      });
+      if (!res.ok) {
+        let detail = "";
+        try { const j = await res.json(); detail = j.error?.message || ""; } catch (e) {}
+        throw new Error("API " + res.status + (detail ? " — " + detail : ""));
+      }
+      const data = await res.json();
+      return (data.choices?.[0]?.message?.content || "").trim();
+    }
+
+    $("run").addEventListener("click", async () => {
+      const instruction = $("prompt").value.trim();
+      if (!instruction) { setStatus("Escreva uma instrução.", "err"); return; }
+      if (!localStorage.getItem("nxt_openai_key")) {
+        setStatus("Configure a chave da API primeiro.", "err");
+        $("settings").open = true; return;
+      }
+      $("run").disabled = true;
+      hideAnswer();
+      try {
+        if (MODE === "cell") {
+          await runPerCell(instruction);
+        } else {
+          await runSummary(instruction);
+        }
+      } catch (err) {
+        setStatus("Erro: " + err.message, "err");
+      } finally {
+        $("run").disabled = false;
+      }
+    });
+
+    // MODO 1: processa cada célula e escreve na coluna ao lado
+    async function runPerCell(instruction) {
+      const system = "Você é um assistente de edição de planilhas. Recebe o conteúdo de UMA célula e uma instrução. "
+        + "Responda APENAS com o novo valor da célula, sem aspas, sem explicações, sem prefixos. "
+        + "Se a célula estiver vazia, responda com vazio.";
+
+      // ler seleção
+      const cells = await Excel.run(async (ctx) => {
+        const range = ctx.workbook.getSelectedRange();
+        range.load(["values", "rowCount", "columnCount", "address"]);
+        await ctx.sync();
+        return { values: range.values, rows: range.rowCount, cols: range.columnCount, address: range.address };
+      });
+
+      const total = cells.rows * cells.cols;
+      if (total === 0) { setStatus("Nada selecionado.", "err"); return; }
+
+      setStatus('<span class="spinner"></span>Processando ' + total + ' célula(s)…');
+
+      const out = [];
+      let done = 0;
+      for (let r = 0; r < cells.rows; r++) {
+        const line = [];
+        for (let c = 0; c < cells.cols; c++) {
+          const val = cells.values[r][c];
+          if (val === "" || val === null || val === undefined) { line.push(""); }
+          else {
+            const result = await callOpenAI(system, "Instrução: " + instruction + "\n\nConteúdo da célula:\n" + String(val));
+            line.push(result);
+          }
+          done++;
+          setStatus('<span class="spinner"></span>Processando ' + done + ' de ' + total + '…');
+        }
+        out.push(line);
+      }
+
+      // escrever na coluna imediatamente à direita da seleção
+      await Excel.run(async (ctx) => {
+        const sel = ctx.workbook.getSelectedRange();
+        const target = sel.getColumnsAfter(cells.cols);
+        target.values = out;
+        target.format.autofitColumns();
+        await ctx.sync();
+      });
+
+      setStatus("Concluído. Resultados escritos à direita da seleção.", "ok");
+    }
+
+    // MODO 2: manda a seleção inteira como contexto e devolve resposta única
+    async function runSummary(instruction) {
+      setStatus('<span class="spinner"></span>Lendo a seleção…');
+      const grid = await Excel.run(async (ctx) => {
+        const range = ctx.workbook.getSelectedRange();
+        range.load(["values", "rowCount", "columnCount"]);
+        await ctx.sync();
+        return range.values;
+      });
+
+      if (!grid.length) { setStatus("Nada selecionado.", "err"); return; }
+
+      // converter para TSV legível
+      const tsv = grid.map(row => row.map(v => (v === null || v === undefined) ? "" : String(v)).join("\t")).join("\n");
+
+      const system = "Você é um analista que trabalha com dados de planilhas. Responda em português, de forma direta e objetiva.";
+      const user = "Instrução: " + instruction + "\n\nDados selecionados (TSV):\n" + tsv;
+
+      setStatus('<span class="spinner"></span>Consultando o modelo…');
+      const answer = await callOpenAI(system, user);
+      setStatus("Concluído.", "ok");
+      showAnswer(answer);
+    }
+  </script>
+</body>
+</html>
